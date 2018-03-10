@@ -1,0 +1,2 @@
+*.pbxproj -text
+ios/FaceDetector.framework/FaceDetector filter=lfs diff=lfs merge=lfs -text

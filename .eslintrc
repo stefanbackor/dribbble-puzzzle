@@ -1,0 +1,41 @@
+{
+  "parser": "babel-eslint",
+  "extends": [
+    "eslint:recommended",
+    "plugin:react/recommended",
+    "plugin:import/errors"
+  ],
+  "plugins": [
+    "react",
+    "prettier"
+  ],
+  "rules": {
+    "import/default": 0,
+    "react/display-name": 0,
+    "react/prop-types": 0,
+    "prettier/prettier": 2,
+    "semi": [2, "never"],
+  },
+  "settings": {
+    "import/resolver": {
+      "node": {
+        "extensions": [".js", ".android.js", ".ios.js"]
+      }
+    }
+  },
+  "globals": {
+    "afterEach": true,
+    "beforeAll": true,
+    "beforeEach": true,
+    "console": true,
+    "describe": true,
+    "expect": true,
+    "global": true,
+    "it": true,
+    "jest": true,
+    "Promise": true,
+    "require": true,
+    "setTimeout": true,
+    "window": true
+  }
+}
