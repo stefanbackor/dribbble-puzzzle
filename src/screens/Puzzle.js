@@ -1,5 +1,5 @@
 import React, { Component } from 'react'
-import { Image, Dimensions, View } from 'react-native'
+import { Image, Dimensions, View, TouchableOpacity } from 'react-native'
 import { Asset, Audio, ScreenOrientation } from 'expo'
 import { first, sample, shuffle, tail } from 'lodash'
 import styled, { css } from 'styled-components/native'
@@ -76,6 +76,7 @@ export default class Puzzle extends Component {
       tiles: [],
       radius: RADIUS,
       completed: false,
+      fullscreen: false,
       successMelody: SUCCESS_MELODY
     }
   }
@@ -100,7 +101,8 @@ export default class Puzzle extends Component {
       asset,
       rows,
       cols,
-      tiles: []
+      tiles: [],
+      fullscreen: false
     }
 
     const positions = []
@@ -207,6 +209,10 @@ export default class Puzzle extends Component {
     )
   }
 
+  toggleFullscreen = () => {
+    this.setState(state => ({ fullscreen: !state.fullscreen }))
+  }
+
   onDragStart = index => {
     const { x, y } = this.containerLayout
     const { layout } = this.state.tiles[index]
@@ -240,7 +246,15 @@ export default class Puzzle extends Component {
   }
 
   render() {
-    const { asset, cols, rows, tiles, completed, radius } = this.state
+    const {
+      asset,
+      cols,
+      rows,
+      tiles,
+      completed,
+      radius,
+      fullscreen
+    } = this.state
     const { orientation } = this.props.screenProps
 
     if (!asset) {
@@ -275,6 +289,12 @@ export default class Puzzle extends Component {
 
     return (
       <Row landscape={orientation === ScreenOrientation.Orientation.LANDSCAPE}>
+        {fullscreen && (
+          <TouchableOpacity activeOpacity={1} onPress={this.toggleFullscreen}>
+            <Image source={asset} />
+          </TouchableOpacity>
+        )}
+
         <Column>
           <Container
             radius={radius}
@@ -284,47 +304,52 @@ export default class Puzzle extends Component {
               this.containerLayout = nativeEvent.layout
             }}
           >
-            {tiles.map(
-              (
-                { pos: [x, y], active, success, borderStyle, highlight },
-                index
-              ) => (
-                <Piece
-                  key={`main-${index}-${asset.uri}`}
-                  success={success}
-                  highlight={highlight}
-                  tileWidth={tileWidth}
-                  tileHeight={tileHeight}
-                  style={{
-                    position: 'absolute',
-                    top: tileHeight * y + 1,
-                    left: tileWidth * x + 1,
-                    ...borderStyle,
-                    borderLeftColor: '#efefef',
-                    borderLeftWidth: x == 0 ? 0 : 1,
-                    borderTopColor: '#efefef',
-                    borderTopWidth: y == 0 ? 0 : 1
-                  }}
-                  image={
-                    <Image
-                      source={asset}
-                      style={{
-                        opacity: success ? 1 : active ? 0 : 0,
-                        position: 'absolute',
-                        top: 0 - tileHeight * y,
-                        left: 0 - tileWidth * x,
-                        width: resultWidth,
-                        height: resultHeight
-                      }}
-                    />
-                  }
-                  ref={`tile-${index}`}
-                  onLayout={({ nativeEvent }) => {
-                    this.setTileLayout(nativeEvent, index)
-                  }}
-                />
-              )
-            )}
+            <TouchableOpacity
+              activeOpacity={1}
+              onPress={completed ? this.toggleFullscreen : () => false}
+            >
+              {tiles.map(
+                (
+                  { pos: [x, y], active, success, borderStyle, highlight },
+                  index
+                ) => (
+                  <Piece
+                    key={`main-${index}-${asset.uri}`}
+                    success={success}
+                    highlight={highlight}
+                    tileWidth={tileWidth}
+                    tileHeight={tileHeight}
+                    style={{
+                      position: 'absolute',
+                      top: tileHeight * y + 1,
+                      left: tileWidth * x + 1,
+                      ...borderStyle,
+                      borderLeftColor: '#efefef',
+                      borderLeftWidth: x == 0 ? 0 : 1,
+                      borderTopColor: '#efefef',
+                      borderTopWidth: y == 0 ? 0 : 1
+                    }}
+                    image={
+                      <Image
+                        source={asset}
+                        style={{
+                          opacity: success ? 1 : active ? 0 : 0,
+                          position: 'absolute',
+                          top: 0 - tileHeight * y,
+                          left: 0 - tileWidth * x,
+                          width: resultWidth,
+                          height: resultHeight
+                        }}
+                      />
+                    }
+                    ref={`tile-${index}`}
+                    onLayout={({ nativeEvent }) => {
+                      this.setTileLayout(nativeEvent, index)
+                    }}
+                  />
+                )
+              )}
+            </TouchableOpacity>
           </Container>
         </Column>
 
