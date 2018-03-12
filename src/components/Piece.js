@@ -1,70 +1,100 @@
 import React, { Component } from 'react'
-import styled from 'styled-components/native'
-import { StyleSheet } from 'react-native'
-
-const SIZE = 50
-
-const Wrap = styled.View`
-  width: ${props => props.width};
-  height: ${props => props.height};
-  overflow: hidden;
-`
-
-const Placement = styled.View`
-  width: ${props => props.width};
-  height: ${props => props.height};
-`
-
-const Text = styled.Text`
-  color: blue;
-  font-size: 22px;
-  position: absolute;
-  top: 0;
-  left: 0;
-  z-index: 2;
-`
+import { Animated, PanResponder } from 'react-native'
 
 export default class Piece extends Component {
+  constructor(props) {
+    super(props)
+    this.state = {
+      active: false,
+      pan: new Animated.ValueXY()
+    }
+  }
+
+  componentWillMount() {
+    this.panResponder = this.props.draggable
+      ? PanResponder.create({
+          onStartShouldSetPanResponder: () => true,
+          onPanResponderGrant: this._onPanGrant,
+          onPanResponderMove: this._onPanMove,
+          onPanResponderRelease: this._onPanRelease,
+          onPanResponderTerminate: this._onPanRelease
+        })
+      : {}
+  }
+
+  _onPanGrant = () => {
+    this.setState({ active: true })
+    this.props.onDragStart()
+  }
+
+  _onPanMove = (event, gesture) => {
+    if (this.isDropZone(gesture)) {
+      this.props.onDropZoneEnter()
+    } else {
+      this.props.onDropZoneLeave()
+    }
+    return Animated.event([
+      null,
+      {
+        dx: this.state.pan.x,
+        dy: this.state.pan.y
+      }
+    ])(event, gesture)
+  }
+
+  _onPanRelease = (_, gesture) => {
+    this.setState({ active: false })
+    this.props.onDragEnd()
+    if (this.isDropZone(gesture)) {
+      this.props.onDropZoneHit()
+    } else {
+      this.props.onDropZoneMiss()
+      Animated.spring(this.state.pan, {
+        toValue: { x: 0, y: 0 }
+      }).start()
+    }
+  }
+
+  isDropZone = gesture => {
+    const { moveX, moveY } = gesture
+    const { x, y, width, height } = this.props.dropZone || {}
+    return moveX > x && moveX < x + width && moveY > y && moveY < y + height
+  }
+
   render() {
     const {
       image,
-      resultWidth,
-      resultHeight,
+      draggable,
       tileWidth,
       tileHeight,
-      top,
-      left
+      style,
+      onLayout
     } = this.props
-    const w = tileWidth || SIZE
-    const h = tileHeight || SIZE
+
+    const { active, pan } = this.state
+    const { left, top } = pan.getLayout()
 
     return (
-      <Wrap width={w} height={h}>
-        {/* <Text>
-          {[
-            posX,
-            'x',
-            posY,
-            '- left ',
-            Math.round(posX * resultWidth / 3),
-            '- top ',
-            Math.round(posY * resultHeight / 3)
-          ]}
-        </Text> */}
-
-        {image && (
-          <Placement
-            width={resultWidth}
-            height={resultHeight}
-            style={{
-              top: top !== undefined ? 0 - top : 'auto',
-              left: left !== undefined ? 0 - left : 'auto'
-            }}
-          >
-            {image}
-          </Placement>
-        )}
-      </Wrap>
+      <Animated.View
+        onLayout={onLayout}
+        style={{
+          width: tileWidth,
+          height: tileHeight,
+          overflow: 'hidden',
+          position: 'absolute',
+          zIndex: active ? 1000 : 1,
+          ...style,
+          top: draggable
+            ? Animated.add(top, style.top || 0)
+            : style.top || 'auto',
+          left: draggable
+            ? Animated.add(left, style.left || 0)
+            : style.left || 'auto'
+        }}
+        {...this.panResponder.panHandlers}
+      >
+        {image}
+      </Animated.View>
     )
   }
 }

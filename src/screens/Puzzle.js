@@ -1,89 +1,106 @@
 import React, { Component } from 'react'
-import {
-  Animated,
-  PanResponder,
-  Image,
-  Dimensions,
-  StyleSheet,
-  Text,
-  View
-} from 'react-native'
-import { sample, shuffle } from 'lodash'
+import { Image, Dimensions, View } from 'react-native'
+import { Asset, Audio, ScreenOrientation } from 'expo'
+import { first, sample, shuffle, tail } from 'lodash'
 import styled, { css } from 'styled-components/native'
+import { EvilIcons } from '@expo/vector-icons'
 import Piece from '../components/Piece'
-import image1 from '../../assets/puzzles/superheroes.png'
-import image2 from '../../assets/puzzles/rocket.png'
-import image3 from '../../assets/puzzles/rocket-dribbble.png'
+import audioFail from '../../assets/audio/keeney_digitalaudio/pepSound3.mp3'
+import audioSuccess1 from '../../assets/audio/keeney_digitalaudio/phaserUp5.mp3'
+import audioSuccess2 from '../../assets/audio/keeney_digitalaudio/phaserUp6.mp3'
+import audioSuccess3 from '../../assets/audio/keeney_digitalaudio/phaserUp7.mp3'
+import audioComplete from '../../assets/audio/1_person_cheering-Jett_Rifkin-1851518140.mp3'
 
-const PuzzleImage = styled.Image``
+import images from '../../assets/puzzles'
+
+const RADIUS = 35
+
+const SUCCESS_MELODY = [
+  audioSuccess1,
+  audioSuccess2,
+  audioSuccess3,
+  audioSuccess2
+]
 
 const Row = styled.View`
+  flex: 1;
+  display: flex;
+  justify-content: space-around;
+  flex-direction: ${props => (props.landscape ? 'row' : 'column')};
+`
+
+const Column = styled.View`
+  flex: 1;
+  flex-basis: 50%;
   display: flex;
   justify-content: center;
-  flex-direction: row;
+  align-items: center;
 `
 
 const Container = styled.View`
-  border: solid 1px white;
   background-color: white;
-  box-shadow: 5px 5px 5px silver;
+  box-shadow: 0px 0px 5px silver;
+  border-radius: ${props => props.radius || 0};
   width: ${props => props.width};
   height: ${props => props.height};
-`
-
-const Tile = styled.View`
-  position: absolute;
-  left: ${props => props.left};
-  top: ${props => props.top};
-  opacity: 0.3;
   ${props =>
-    props.success &&
+    props.shuffle &&
     css`
-      opacity: 1;
-    `};
-  ${props =>
-    props.highlight &&
-    css`
-      opacity: 0.5;
+      background-color: transparent;
+      box-shadow: none;
+      border: 0;
     `};
 `
 
-const DraggableTile = styled(Animated.View)`
-  position: absolute;
-  display: ${props => (props.success ? 'none' : 'flex')};
-  z-index: ${props => (props.active ? 1000 : 1)};
+const Results = styled.View`
+  display: flex;
+  justify-content: center;
+  align-items: center;
 `
 
 const Success = styled.Text`
-  flex: 1;
-  font-size: 48px;
+  font-size: 64px;
+  line-height: 64px;
+  height: 74px;
+  margin: 32px 0;
 `
 
 export default class Puzzle extends Component {
   constructor(props) {
     super(props)
-    this.image = sample([image3]) // , image2, image3
-    const { width, height } = Image.resolveAssetSource(this.image)
-    const ratio = width / height
-    // const resultWidth = Dimensions.get('window').width - 150
-    // const resultHeight = resultWidth / ratio
-
-    const resultHeight = Dimensions.get('window').height / 2 - 100
-    const resultWidth = resultHeight * ratio
-
-    const [cols, rows] = [4, 3]
-
     this.state = {
-      width,
-      height,
-      resultWidth,
-      resultHeight,
+      image: null,
+      previousImage: null,
+      rows: 0,
+      cols: 0,
+      tiles: [],
+      radius: RADIUS,
+      completed: false,
+      successMelody: SUCCESS_MELODY
+    }
+  }
+
+  containerLayout = {}
+
+  componentDidMount() {
+    this.randomize()
+  }
+
+  randomize = async () => {
+    await this.load({
+      image: sample(images),
+      size: sample([[2, 2], [3, 2], [3, 3], [4, 3]])
+    })
+  }
+
+  load = async ({ image, size: [cols, rows] }) => {
+    const asset = await Asset.fromModule(image)
+
+    const state = {
+      asset,
       rows,
       cols,
-      tileWidth: resultWidth / cols,
-      tileHeight: resultHeight / rows,
-      tiles: [],
-      success: false
+      tiles: []
     }
 
     const positions = []
@@ -93,95 +110,118 @@ export default class Puzzle extends Component {
     // 1. show corners, main opacity to 0.3, then 0.5 on hover, then 0.5 after 3sec of dragging
     // 2. show corners, main opacity to 0.3
     // 3. no corners, main opacity to 0.3
-    // 4. no corners, zero opacity, random 2 tiles placed
-    // 5. no corners, zero opacity, random tile placed
-    // 6. no corners, zero opacity, no tile placed
+    // 4. no corners, zero opacity, random 2 tiles placed, surrounding with opacity
+    // 5. no corners, zero opacity, random tile placed, surrounding with opacity
 
-    const _ = [...Array(this.state.cols).keys()].forEach(posX =>
-      [...Array(this.state.rows).keys()].forEach(posY =>
-        positions.push([posX, posY])
-      )
+    const _ = [...Array(cols).keys()].forEach(posX =>
+      [...Array(rows).keys()].forEach(posY => positions.push([posX, posY]))
     )
 
     const shuffled = shuffle(positions)
 
-    this.state.tiles = positions.map(pos => ({
-      pos,
+    let tiles = positions.map(([x, y]) => ({
+      pos: [x, y],
       shufflePos: shuffled.pop(),
+      borderStyle: {
+        overflow: 'hidden',
+        borderTopLeftRadius: x === 0 && y === 0 ? RADIUS : 0,
+        borderTopRightRadius: x === cols - 1 && y === 0 ? RADIUS : 0,
+        borderBottomLeftRadius: x === 0 && y === rows - 1 ? RADIUS : 0,
+        borderBottomRightRadius: x === cols - 1 && y === rows - 1 ? RADIUS : 0
+      },
       active: false,
       success: false,
       highlight: false,
-      dropZone: {},
-      pan: new Animated.ValueXY()
+      layout: {},
+      dropZone: {}
     }))
 
-    this.state.tiles = this.state.tiles.map((tile, index) => ({
-      ...tile,
-      panResponder: PanResponder.create({
-        onStartShouldSetPanResponder: () => true,
-        onPanResponderGrant: (i => this.onPanGrant(i))(index),
-        onPanResponderMove: (i => this.onPanMove(i))(index),
-        onPanResponderRelease: (i => this.onPanRelease(i))(index),
-        onPanResponderTerminate: (i => this.onPanRelease(i))(index)
-      })
-    }))
+    this.setState({
+      ...state,
+      tiles
+    })
   }
 
-  componentDidMount() {
-    // this.setState({ shuffledTiles: shuffle(this.state.tiles) })
-  }
-
-  componentWillUpdate(nextProps, nextState) {}
-
-  onSuccessPlacement = () => {
-    if (this.state.tiles.filter(tile => tile.success === false).length === 0) {
-      this.onSuccess()
+  playUIAudio = async ({ clip, volume }) => {
+    try {
+      const sound = new Audio.Sound()
+      await sound.loadAsync(clip)
+      await sound.setVolumeAsync(volume || 1)
+      await sound.playAsync()
+    } catch (err) {
+      // 0fg
     }
   }
-  onSuccess = () => {
-    this.setState({ success: true })
+
+  onFailedPlacement = index => {
+    this.setTileState(index, {
+      success: false,
+      highlight: false,
+      active: false
+    })
+    this.playUIAudio({ clip: audioFail, volume: 0.4 })
   }
 
-  onPanGrant = index => () => {
-    this.setTileState(index, { active: true })
-  }
-
-  onPanMove = index => (event, gesture) => {
-    // if ((index => this.isDropZone(gesture, index))(index)) {
-    //   this.setTileState(index, { highlight: true })
-    // } else {
-    //   this.setTileState(index, { highlight: false })
-    // }
-    return Animated.event([
-      null,
+  onSuccessPlacement = index => {
+    this.setTileState(
+      index,
       {
-        dx: this.state.tiles[index].pan.x,
-        dy: this.state.tiles[index].pan.y
-      }
-    ])(event, gesture)
-  }
-
-  onPanRelease = index => (_, gesture) => {
-    if ((index => this.isDropZone(gesture, index))(index)) {
-      this.setTileState(
-        index,
-        {
-          success: true,
-          highlight: false,
-          active: false
-        },
-        () => this.onSuccessPlacement(index)
-      )
-    } else {
-      this.setTileState(index, {
-        success: false,
+        success: true,
         highlight: false,
         active: false
-      })
-      Animated.spring(this.state.tiles[index].pan, {
-        toValue: { x: 0, y: 0 }
-      }).start()
-    }
+      },
+      () => {
+        if (
+          this.state.tiles.filter(tile => tile.success === false).length === 0
+        ) {
+          this.onComplete()
+        } else {
+          this.playUIAudio({
+            clip: first(this.state.successMelody),
+            volume: 0.4
+          })
+          this.setState(state => ({
+            successMelody: [
+              ...tail(state.successMelody),
+              first(this.state.successMelody)
+            ]
+          }))
+        }
+      }
+    )
+  }
+
+  onComplete = () => {
+    this.setState({ completed: true })
+    this.playUIAudio({ clip: audioComplete })
+  }
+
+  onRefresh = () => {
+    this.setState(
+      state => ({
+        completed: false,
+        successMelody: SUCCESS_MELODY,
+        previousImage: state.image
+      }),
+      this.randomize
+    )
+  }
+
+  onDragStart = index => {
+    const { x, y } = this.containerLayout
+    const { layout } = this.state.tiles[index]
+    this.setTileState(index, {
+      active: true,
+      dropZone: {
+        ...layout,
+        x: layout.x + x,
+        y: layout.y + y
+      }
+    })
+  }
+
+  onDragEnd = index => () => {
+    this.setTileState(index, { active: false })
   }
 
   setTileState = (index, tileState, cb) =>
@@ -193,132 +233,201 @@ export default class Puzzle extends Component {
       return state
     }, cb)
 
-  setDropZoneValues = (nativeEvent, index) =>
-    this.setTileState(index, { dropZone: nativeEvent.layout })
-
-  isDropZone(gesture, index) {
-    const { containerLayout } = this.state
-    const { moveX, moveY } = gesture
-    var { x, y, width, height } = this.state.tiles[index].dropZone
-    x = x + containerLayout.x
-    y = y + containerLayout.y
-    return moveX > x && moveX < x + width && moveY > y && moveY < y + height
+  setTileLayout = ({ layout }, index) => {
+    this.setTileState(index, {
+      layout: layout
+    })
   }
 
-  tileTop = x => x * (this.state.resultHeight / this.state.rows)
-  tileLeft = y => y * (this.state.resultWidth / this.state.cols)
-
   render() {
-    const {
-      cols,
-      rows,
-      resultWidth,
-      resultHeight,
-      tileWidth,
-      tileHeight,
-      tiles,
-      success
-    } = this.state
+    const { asset, cols, rows, tiles, completed, radius } = this.state
+    const { orientation } = this.props.screenProps
 
-    const ImageNode = (
-      <PuzzleImage
-        source={this.image}
-        style={{ width: resultWidth, height: resultHeight }}
-      />
-    )
-
-    const pieceProps = {
-      image: ImageNode,
-      tileWidth,
-      tileHeight,
-      resultWidth,
-      resultHeight
+    if (!asset) {
+      return null
     }
 
-    const fullProps = {
-      ...pieceProps
+    const { width, height } = asset || {}
+    const ratio = width / height
+
+    let resultWidth
+    let resultHeight
+    let draggableResultWidth
+    let draggableResultHeight
+    if (orientation === ScreenOrientation.Orientation.LANDSCAPE) {
+      resultWidth = Dimensions.get('window').width / 2
+      resultWidth = resultWidth - 0.2 * resultWidth
+      resultHeight = resultWidth / ratio
+      draggableResultWidth = resultWidth * 0.7
+      draggableResultHeight = draggableResultWidth / ratio
+    } else {
+      resultHeight = Dimensions.get('window').height / 2
+      resultHeight = resultHeight - 0.2 * resultHeight
+      resultWidth = resultHeight * ratio
+      draggableResultHeight = resultHeight * 0.7
+      draggableResultWidth = draggableResultHeight * ratio
     }
+
+    const tileWidth = resultWidth / cols
+    const tileHeight = resultHeight / rows
+    const draggableTileWidth = draggableResultWidth / cols
+    const draggableTileHeight = draggableResultHeight / rows
 
     return (
-      <View style={{ position: 'relative' }}>
-        <Container
-          width={resultWidth + cols}
-          height={resultHeight + rows}
-          onLayout={({ nativeEvent }) => {
-            this.setState({ containerLayout: nativeEvent.layout })
-          }}
-          style={{
-            top: (Dimensions.get('window').height / 2 - resultHeight) / 2,
-            left: (Dimensions.get('window').width - resultWidth) / 2
-          }}
-        >
-          {tiles.map(({ pos: [x, y], success, highlight }, index) => (
-            <Tile
-              key={`main-${index}`}
-              success={success}
-              highlight={highlight}
-              top={this.tileTop(y) + y}
-              left={this.tileLeft(x) + x}
-              onLayout={({ nativeEvent }) =>
-                this.setDropZoneValues(nativeEvent, index)
-              }
-            >
-              <Piece
-                {...fullProps}
-                top={this.tileTop(y)}
-                left={this.tileLeft(x)}
-              />
-            </Tile>
-          ))}
-        </Container>
-
-        <Row>
-          {success && <Success>👍</Success>}
+      <Row landscape={orientation === ScreenOrientation.Orientation.LANDSCAPE}>
+        <Column>
           <Container
-            style={{
-              width: resultWidth,
-              height: resultHeight,
-              position: 'relative',
-              transform: [{ scale: 0.7 }],
-              marginTop: 50
+            radius={radius}
+            width={resultWidth + 2}
+            height={resultHeight + 2}
+            onLayout={({ nativeEvent }) => {
+              this.containerLayout = nativeEvent.layout
             }}
           >
             {tiles.map(
               (
-                {
-                  active,
-                  pan,
-                  pos: [x, y],
-                  panResponder,
-                  shufflePos: [sx, sy],
-                  success
-                },
+                { pos: [x, y], active, success, borderStyle, highlight },
                 index
-              ) => {
-                const { left, top } = pan.getLayout()
-                return (
-                  <DraggableTile
-                    key={`shuffled-${index}`}
-                    success={success}
-                    active={active}
-                    style={{
-                      top: Animated.add(top, this.tileTop(sy)),
-                      left: Animated.add(left, this.tileLeft(sx))
-                    }}
-                    {...panResponder.panHandlers}
-                  >
-                    <Piece
-                      {...pieceProps}
-                      top={this.tileTop(y)}
-                      left={this.tileLeft(x)}
+              ) => (
+                <Piece
+                  key={`main-${index}-${asset.uri}`}
+                  success={success}
+                  highlight={highlight}
+                  tileWidth={tileWidth}
+                  tileHeight={tileHeight}
+                  style={{
+                    position: 'absolute',
+                    top: tileHeight * y + 1,
+                    left: tileWidth * x + 1,
+                    ...borderStyle,
+                    borderLeftColor: '#efefef',
+                    borderLeftWidth: x == 0 ? 0 : 1,
+                    borderTopColor: '#efefef',
+                    borderTopWidth: y == 0 ? 0 : 1
+                  }}
+                  image={
+                    <Image
+                      source={asset}
+                      style={{
+                        opacity: success ? 1 : active ? 0 : 0,
+                        position: 'absolute',
+                        top: 0 - tileHeight * y,
+                        left: 0 - tileWidth * x,
+                        width: resultWidth,
+                        height: resultHeight
+                      }}
                     />
-                  </DraggableTile>
-                )
-              }
+                  }
+                  ref={`tile-${index}`}
+                  onLayout={({ nativeEvent }) => {
+                    this.setTileLayout(nativeEvent, index)
+                  }}
+                />
+              )
             )}
           </Container>
-        </Row>
-      </View>
+        </Column>
+
+        <Column>
+          {!completed && (
+            <Container
+              width={draggableResultWidth}
+              height={draggableResultHeight}
+              shuffle
+            >
+              {tiles.map(
+                (
+                  {
+                    active,
+                    pos: [x, y],
+                    shufflePos: [sx, sy],
+                    dropZone,
+                    success,
+                    borderStyle
+                  },
+                  index
+                ) => {
+                  return (
+                    !success && (
+                      <Piece
+                        key={`shuffled-${index}-${asset.uri}`}
+                        draggable
+                        dropZone={dropZone}
+                        onDragStart={() => this.onDragStart(index)}
+                        onDragEnd={() => this.onDragEnd(index)}
+                        onDropZoneEnter={() => false}
+                        onDropZoneLeave={() => false}
+                        onDropZoneHit={() => this.onSuccessPlacement(index)}
+                        onDropZoneMiss={() => this.onFailedPlacement(index)}
+                        tileWidth={draggableTileWidth}
+                        tileHeight={draggableTileHeight}
+                        style={{
+                          position: 'absolute',
+                          top: draggableTileHeight * sy,
+                          left: draggableTileWidth * sx,
+                          display: 'flex',
+                          justifyContent: 'center',
+                          alignItems: 'center'
+                        }}
+                        image={
+                          <View
+                            style={{
+                              flex: 1,
+                              position: 'relative',
+                              overflow: 'hidden',
+                              width: draggableTileWidth,
+                              height: draggableTileHeight,
+                              transform: [{ scale: active ? 1 : 0.85 }],
+                              ...borderStyle
+                            }}
+                          >
+                            <Image
+                              source={asset}
+                              style={{
+                                position: 'absolute',
+                                top: 0 - draggableTileHeight * y,
+                                left: 0 - draggableTileWidth * x,
+                                width: draggableResultWidth,
+                                height: draggableResultHeight
+                              }}
+                            />
+                          </View>
+                        }
+                      />
+                    )
+                  )
+                }
+              )}
+            </Container>
+          )}
+          {completed && (
+            <Results
+              style={{
+                width: draggableResultWidth,
+                height: draggableResultHeight
+              }}
+            >
+              <Success>
+                {sample(['🤪🎂👍', '🤩👏🎯', '🌈🌈🍾', '🥁🏆🏅', '🚀💎🏁'])}
+              </Success>
+            </Results>
+          )}
+          <View
+            style={{
+              marginTop: 30
+            }}
+          >
+            <EvilIcons.Button
+              name="play"
+              size={100}
+              borderRadius={50}
+              backgroundColor="transparent"
+              color={completed ? 'brown' : 'silver'}
+              onPress={this.onRefresh}
+            />
+          </View>
+        </Column>
+      </Row>
     )
   }
 }

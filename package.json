@@ -1,5 +1,5 @@
 {
-  "name": "dribbbble-puzzzle",
+  "name": "dribbble-puzzzle",
   "version": "0.1.0",
   "private": true,
   "devDependencies": {
@@ -28,10 +28,9 @@
     "axios": "^0.18.0",
     "expo": "^25.0.0",
     "lodash": "^4.17.5",
-    "react-intl": "^2.4.0",
     "react": "16.2.0",
-    "react-native":
-      "https://github.com/expo/react-native/archive/sdk-25.0.0.tar.gz",
+    "react-intl": "^2.4.0",
+    "react-native": "https://github.com/expo/react-native/archive/sdk-25.0.0.tar.gz",
     "react-navigation": "^1.5.0",
     "react-redux": "^5.0.7",
     "redux": "^3.7.2",

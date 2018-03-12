@@ -1,17 +1,19 @@
 import React, { Component } from 'react'
+import { Dimensions } from 'react-native'
 import { StackNavigator, NavigationActions } from 'react-navigation'
 import { connect } from 'react-redux'
+import { ScreenOrientation } from 'expo'
 import { rootRouteChange } from '../actions/navigation'
 import Loading from '../screens/Loading'
-import Puzzle from '../screens/Puzzle'
+import Tab from './Tab'
 
 const RootNavigator = StackNavigator(
   {
     Loading: {
       screen: Loading
     },
-    Puzzle: {
-      screen: Puzzle
+    Tab: {
+      screen: Tab
     }
   },
   {
@@ -25,14 +27,35 @@ const RootNavigator = StackNavigator(
 
 @connect(null, { rootRouteChange })
 export default class Root extends Component {
+  constructor(props) {
+    super(props)
+    this.state = {
+      orientation: this.orientation(Dimensions.get('window'))
+    }
+  }
+
   componentDidMount() {
-    console.log('dispatch')
+    Dimensions.addEventListener('change', this.handleDimensionsChange)
+
     this.navigator.dispatch(
       NavigationActions.reset({
         index: 0,
-        actions: [NavigationActions.navigate({ routeName: 'Puzzle' })]
+        actions: [NavigationActions.navigate({ routeName: 'Tab' })]
       })
     )
+  }
+
+  componentWillUnmount() {
+    Dimensions.removeEventListener('change', this.handleDimensionsChange)
+  }
+
+  orientation = ({ width, height }) =>
+    width > height
+      ? ScreenOrientation.Orientation.LANDSCAPE
+      : ScreenOrientation.Orientation.PORTRAIT
+
+  handleDimensionsChange = ({ window }) => {
+    this.setState({ orientation: this.orientation(window) })
   }
 
   handleNavigationStateChange = (prevState, currentState) => {
@@ -44,11 +67,13 @@ export default class Root extends Component {
   }
 
   render() {
+    const { orientation } = this.state
     return (
       <RootNavigator
         ref={ref => {
           this.navigator = ref
         }}
+        screenProps={{ orientation }}
         onNavigationStateChange={this.handleNavigationStateChange}
       />
     )
