@@ -1,37 +1,46 @@
-import React, { Component } from 'react'
-import { Image, Dimensions, View, TouchableOpacity } from 'react-native'
+import React from 'react'
+import { connect } from 'react-redux'
+import { Image, Dimensions, View, TouchableOpacity, Text } from 'react-native'
 import { Asset, Audio, ScreenOrientation } from 'expo'
-import { first, sample, shuffle, tail } from 'lodash'
+import { sample, sampleSize, shuffle } from 'lodash'
 import styled, { css } from 'styled-components/native'
 import { EvilIcons } from '@expo/vector-icons'
+import { setPuzzleSolved, goToNextPuzzle } from '../actions/game'
 import Piece from '../components/Piece'
+import background from '../../assets/lightgreypolkadots.jpg'
 import audioFail from '../../assets/audio/keeney_digitalaudio/pepSound3.mp3'
-import audioSuccess1 from '../../assets/audio/keeney_digitalaudio/phaserUp5.mp3'
-import audioSuccess2 from '../../assets/audio/keeney_digitalaudio/phaserUp6.mp3'
-import audioSuccess3 from '../../assets/audio/keeney_digitalaudio/phaserUp7.mp3'
+import audioSuccess from '../../assets/audio/keeney_uiaudio/switch30.mp3'
 import audioComplete from '../../assets/audio/1_person_cheering-Jett_Rifkin-1851518140.mp3'
 
-import images from '../../assets/puzzles'
-
 const RADIUS = 35
-
-const SUCCESS_MELODY = [
-  audioSuccess1,
-  audioSuccess2,
-  audioSuccess3,
-  audioSuccess2
-]
+const ALL_OPACTITY = 0.15
+const GUIDE_OPACTITY = 0.25
 
 const Row = styled.View`
   flex: 1;
   display: flex;
   justify-content: space-around;
   flex-direction: ${props => (props.landscape ? 'row' : 'column')};
+
+  margin-top: 50px;
+  ${props =>
+    props.landscape &&
+    css`
+      margin-top: 0;
+      margin-left: 50px;
+    `};
+
+  ${props =>
+    props.fullscreen &&
+    css`
+      justify-content: center;
+      align-items: center;
+      background-color: black;
+    `};
 `
 
 const Column = styled.View`
   flex: 1;
-  flex-basis: 50%;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -52,6 +61,18 @@ const Container = styled.View`
     `};
 `
 
+const Background = styled.Image`
+  border-radius: ${props => props.radius || 0};
+  width: ${props => props.width};
+  height: ${props => props.height};
+  z-index: 0;
+  position: absolute;
+  top: 1;
+  left: 1;
+  right: 1;
+  bottom: 1;
+`
+
 const Results = styled.View`
   display: flex;
   justify-content: center;
@@ -59,80 +80,183 @@ const Results = styled.View`
 `
 
 const Success = styled.Text`
-  font-size: 64px;
-  line-height: 64px;
+  font-size: 52px;
   height: 74px;
   margin: 32px 0;
 `
 
-export default class Puzzle extends Component {
+const Fullscreen = styled.TouchableOpacity`
+  flex: 1;
+  display: flex;
+  justify-content: center;
+`
+
+@connect(
+  state => ({ image: state.game.active, level: state.game.activeLevel }),
+  {
+    setPuzzleSolved,
+    goToNextPuzzle
+  }
+)
+export default class Puzzle extends React.Component {
+  initialState = {
+    image: null,
+    previousImage: null,
+    level: 0,
+    previousLevel: null,
+    tiles: [],
+    rows: 0,
+    cols: 0,
+
+    // difficulty level related
+    initial: 0,
+    targetOpacity: { guide: 0, all: 0 },
+    dimensions: [[2, 2], [3, 2], [3, 3], [4, 3], [4, 4]],
+    radius: RADIUS,
+
+    // Overall state
+    dragging: false,
+    completed: false,
+    fullscreen: false
+  }
+
   constructor(props) {
     super(props)
     this.state = {
-      image: null,
-      previousImage: null,
-      rows: 0,
-      cols: 0,
-      tiles: [],
-      radius: RADIUS,
-      completed: false,
-      fullscreen: false,
-      successMelody: SUCCESS_MELODY
+      ...this.initialState,
+      image: props.image,
+      level: props.level
     }
   }
 
   containerLayout = {}
 
   componentDidMount() {
-    this.randomize()
+    // const { image, level } = this.navigatorParams(this.props)
+    const { image, level } = this.state
+    this.randomize({ image, level })
   }
 
-  randomize = async () => {
-    await this.load({
-      image: sample(images),
-      size: sample([[2, 2], [3, 2], [3, 3], [4, 3]])
-    })
+  componentWillReceiveProps(nextProps) {
+    // const { image, level } = this.navigatorParams(nextProps)
+    const { image, level } = nextProps
+    if (this.state.image !== image) {
+      this.setState(this.initialState, () => this.randomize({ image, level }))
+    }
   }
 
-  load = async ({ image, size: [cols, rows] }) => {
+  // navigatorParams = props => {
+  //   const {
+  //     screenProps: { tabNavigator: { state: { params: params } } }
+  //   } = props
+  //   const { image, level } = params || {}
+  //   return { image, level }
+  // }
+
+  getDifficultyProps = level => {
+    switch (level) {
+      case 5:
+        return {
+          dimensions: [[4, 3], [4, 4], [5, 4], [5, 5]],
+          initial: 1,
+          radius: 0,
+          targetOpacity: { guide: 0, all: 0 }
+        }
+      case 4:
+        return {
+          dimensions: [[3, 3], [4, 3]],
+          initial: 1,
+          radius: 0,
+          targetOpacity: { guide: 0, all: 0 }
+        }
+      case 3:
+        return {
+          dimensions: [[3, 2], [3, 3]],
+          initial: 1,
+          radius: 0,
+          targetOpacity: { guide: ALL_OPACTITY, all: ALL_OPACTITY }
+        }
+      case 2:
+        return {
+          dimensions: [[3, 2]],
+          initial: 0,
+          radius: RADIUS,
+          targetOpacity: { guide: GUIDE_OPACTITY, all: ALL_OPACTITY }
+        }
+      case 1:
+        return {
+          dimensions: [[2, 2]],
+          initial: 0,
+          radius: RADIUS,
+          targetOpacity: { guide: GUIDE_OPACTITY, all: ALL_OPACTITY }
+        }
+      default:
+        return {
+          dimensions: [[3, 2], [3, 3]],
+          initial: 0,
+          radius: RADIUS,
+          targetOpacity: { guide: ALL_OPACTITY, all: ALL_OPACTITY }
+        }
+    }
+  }
+
+  randomize = ({ image, level }) => {
+    const difficulty = this.getDifficultyProps(level)
+    this.setState(
+      {
+        image: image,
+        level: level,
+        size: sample(difficulty.dimensions) || sample(this.state.dimensions),
+        ...difficulty
+      },
+      this.load
+    )
+  }
+
+  load = async () => {
+    const { image, size: [cols, rows], initial, radius } = this.state
     const asset = await Asset.fromModule(image)
 
     const state = {
+      image,
       asset,
       rows,
       cols,
-      tiles: [],
-      fullscreen: false
+      tiles: []
     }
 
     const positions = []
 
     // Levels of difficulty:
 
-    // 1. show corners, main opacity to 0.3, then 0.5 on hover, then 0.5 after 3sec of dragging
-    // 2. show corners, main opacity to 0.3
-    // 3. no corners, main opacity to 0.3
-    // 4. no corners, zero opacity, random 2 tiles placed, surrounding with opacity
-    // 5. no corners, zero opacity, random tile placed, surrounding with opacity
+    // 0. show corners, main opacity to 0.3, then 0.5 on hover, then 0.5 after 3sec of dragging
+    // 1. show corners, main opacity to 0.3
+    // 2. no corners, main opacity to 0.3
+    // 3. no corners, zero opacity, random 2 tiles placed, surrounding with opacity
+    // 4. no corners, zero opacity, random tile placed, surrounding with opacity
 
     const _ = [...Array(cols).keys()].forEach(posX =>
       [...Array(rows).keys()].forEach(posY => positions.push([posX, posY]))
     )
 
     const shuffled = shuffle(positions)
+    const exposed = sampleSize(positions, initial)
 
     let tiles = positions.map(([x, y]) => ({
       pos: [x, y],
       shufflePos: shuffled.pop(),
       borderStyle: {
         overflow: 'hidden',
-        borderTopLeftRadius: x === 0 && y === 0 ? RADIUS : 0,
-        borderTopRightRadius: x === cols - 1 && y === 0 ? RADIUS : 0,
-        borderBottomLeftRadius: x === 0 && y === rows - 1 ? RADIUS : 0,
-        borderBottomRightRadius: x === cols - 1 && y === rows - 1 ? RADIUS : 0
+        borderTopLeftRadius: x === 0 && y === 0 ? radius : 0,
+        borderTopRightRadius: x === cols - 1 && y === 0 ? radius : 0,
+        borderBottomLeftRadius: x === 0 && y === rows - 1 ? radius : 0,
+        borderBottomRightRadius: x === cols - 1 && y === rows - 1 ? radius : 0
       },
       active: false,
       success: false,
+      exposed: exposed.filter(([ex, ey]) => ex === x && ey === y).length
+        ? true
+        : false,
       highlight: false,
       layout: {},
       dropZone: {}
@@ -179,22 +303,16 @@ export default class Puzzle extends Component {
           this.onComplete()
         } else {
           this.playUIAudio({
-            clip: first(this.state.successMelody),
+            clip: audioSuccess,
             volume: 0.4
           })
-          this.setState(state => ({
-            successMelody: [
-              ...tail(state.successMelody),
-              first(this.state.successMelody)
-            ]
-          }))
         }
       }
     )
   }
 
   onComplete = () => {
-    this.setState({ completed: true })
+    this.setState({ completed: true }, this.props.setPuzzleSolved)
     this.playUIAudio({ clip: audioComplete })
   }
 
@@ -202,10 +320,11 @@ export default class Puzzle extends Component {
     this.setState(
       state => ({
         completed: false,
-        successMelody: SUCCESS_MELODY,
-        previousImage: state.image
+        fullscreen: false,
+        previousImage: state.image,
+        previousLevel: state.level
       }),
-      this.randomize
+      this.props.goToNextPuzzle
     )
   }
 
@@ -216,6 +335,7 @@ export default class Puzzle extends Component {
   onDragStart = index => {
     const { x, y } = this.containerLayout
     const { layout } = this.state.tiles[index]
+    this.setState({ dragging: true })
     this.setTileState(index, {
       active: true,
       dropZone: {
@@ -226,7 +346,8 @@ export default class Puzzle extends Component {
     })
   }
 
-  onDragEnd = index => () => {
+  onDragEnd = index => {
+    this.setState({ dragging: false })
     this.setTileState(index, { active: false })
   }
 
@@ -252,10 +373,11 @@ export default class Puzzle extends Component {
       rows,
       tiles,
       completed,
+      fullscreen,
       radius,
-      fullscreen
+      targetOpacity
     } = this.state
-    const { orientation } = this.props.screenProps
+    const { tabNavigator, orientation } = this.props.screenProps
 
     if (!asset) {
       return null
@@ -270,31 +392,40 @@ export default class Puzzle extends Component {
     let draggableResultHeight
     if (orientation === ScreenOrientation.Orientation.LANDSCAPE) {
       resultWidth = Dimensions.get('window').width / 2
-      resultWidth = resultWidth - 0.2 * resultWidth
-      resultHeight = resultWidth / ratio
-      draggableResultWidth = resultWidth * 0.7
-      draggableResultHeight = draggableResultWidth / ratio
+      resultWidth = Math.floor(1 * resultWidth)
+      resultHeight = Math.floor(resultWidth / ratio)
+      draggableResultWidth = Math.floor(resultWidth * 0.6)
+      draggableResultHeight = Math.floor(draggableResultWidth / ratio)
     } else {
       resultHeight = Dimensions.get('window').height / 2
-      resultHeight = resultHeight - 0.2 * resultHeight
-      resultWidth = resultHeight * ratio
-      draggableResultHeight = resultHeight * 0.7
-      draggableResultWidth = draggableResultHeight * ratio
+      resultHeight = Math.floor(1 * resultHeight)
+      resultWidth = Math.floor(resultHeight * ratio)
+
+      draggableResultHeight = Math.floor(resultHeight * 0.6)
+      draggableResultWidth = Math.floor(draggableResultHeight * ratio)
     }
 
-    const tileWidth = resultWidth / cols
-    const tileHeight = resultHeight / rows
-    const draggableTileWidth = draggableResultWidth / cols
-    const draggableTileHeight = draggableResultHeight / rows
+    const tileWidth = Math.floor(resultWidth / cols)
+    const tileHeight = Math.floor(resultHeight / rows)
+    const draggableTileWidth = Math.floor(draggableResultWidth / cols)
+    const draggableTileHeight = Math.floor(draggableResultHeight / rows)
 
-    return (
+    return fullscreen ? (
+      <Row fullscreen>
+        <Fullscreen activeOpacity={1} onPress={this.toggleFullscreen}>
+          <Image
+            source={asset}
+            resizeMode="contain"
+            style={{
+              flex: 1,
+              width: Dimensions.get('window').width,
+              height: Dimensions.get('window').height
+            }}
+          />
+        </Fullscreen>
+      </Row>
+    ) : (
       <Row landscape={orientation === ScreenOrientation.Orientation.LANDSCAPE}>
-        {fullscreen && (
-          <TouchableOpacity activeOpacity={1} onPress={this.toggleFullscreen}>
-            <Image source={asset} />
-          </TouchableOpacity>
-        )}
-
         <Column>
           <Container
             radius={radius}
@@ -304,13 +435,31 @@ export default class Puzzle extends Component {
               this.containerLayout = nativeEvent.layout
             }}
           >
+            <Background
+              source={background}
+              radius={radius}
+              width={resultWidth}
+              height={resultHeight}
+            />
             <TouchableOpacity
               activeOpacity={1}
               onPress={completed ? this.toggleFullscreen : () => false}
+              style={{
+                position: 'relative',
+                width: resultWidth,
+                height: resultHeight
+              }}
             >
               {tiles.map(
                 (
-                  { pos: [x, y], active, success, borderStyle, highlight },
+                  {
+                    pos: [x, y],
+                    active,
+                    exposed,
+                    success,
+                    borderStyle,
+                    highlight
+                  },
                   index
                 ) => (
                   <Piece
@@ -327,13 +476,21 @@ export default class Puzzle extends Component {
                       borderLeftColor: '#efefef',
                       borderLeftWidth: x == 0 ? 0 : 1,
                       borderTopColor: '#efefef',
-                      borderTopWidth: y == 0 ? 0 : 1
+                      borderTopWidth: y == 0 ? 0 : 1,
+                      width: tileWidth,
+                      height: tileHeight
                     }}
                     image={
                       <Image
                         source={asset}
                         style={{
-                          opacity: success ? 1 : active ? 0 : 0,
+                          opacity: success
+                            ? 1
+                            : exposed
+                              ? GUIDE_OPACTITY
+                              : active
+                                ? targetOpacity.guide
+                                : targetOpacity.all,
                           position: 'absolute',
                           top: 0 - tileHeight * y,
                           left: 0 - tileWidth * x,
@@ -342,7 +499,6 @@ export default class Puzzle extends Component {
                         }}
                       />
                     }
-                    ref={`tile-${index}`}
                     onLayout={({ nativeEvent }) => {
                       this.setTileLayout(nativeEvent, index)
                     }}
@@ -392,7 +548,8 @@ export default class Puzzle extends Component {
                           left: draggableTileWidth * sx,
                           display: 'flex',
                           justifyContent: 'center',
-                          alignItems: 'center'
+                          alignItems: 'center',
+                          backgroundColor: 'transparent'
                         }}
                         image={
                           <View
@@ -403,6 +560,7 @@ export default class Puzzle extends Component {
                               width: draggableTileWidth,
                               height: draggableTileHeight,
                               transform: [{ scale: active ? 1 : 0.85 }],
+                              backgroundColor: 'transparent',
                               ...borderStyle
                             }}
                           >
@@ -413,7 +571,8 @@ export default class Puzzle extends Component {
                                 top: 0 - draggableTileHeight * y,
                                 left: 0 - draggableTileWidth * x,
                                 width: draggableResultWidth,
-                                height: draggableResultHeight
+                                height: draggableResultHeight,
+                                backgroundColor: 'transparent'
                               }}
                             />
                           </View>
@@ -439,15 +598,25 @@ export default class Puzzle extends Component {
           )}
           <View
             style={{
-              marginTop: 30
+              marginTop: 20,
+              flexDirection: 'row',
+              alignItems: 'center'
             }}
           >
             <EvilIcons.Button
-              name="play"
-              size={100}
+              name="navicon"
+              size={50}
               borderRadius={50}
               backgroundColor="transparent"
-              color={completed ? 'brown' : 'silver'}
+              color={'silver'}
+              onPress={() => tabNavigator.navigate('ListTab')}
+            />
+            <EvilIcons.Button
+              name="arrow-right"
+              size={completed ? 80 : 50}
+              borderRadius={50}
+              backgroundColor="transparent"
+              color={completed ? 'gray' : 'silver'}
               onPress={this.onRefresh}
             />
           </View>

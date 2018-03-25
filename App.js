@@ -6,6 +6,7 @@ import { Provider } from 'react-redux'
 import store from './src/store'
 import RootNavigator from './src/navigators/Root'
 
+import background from './assets/lightgreypolkadots.jpg'
 import images from './assets/puzzles'
 
 export default class App extends Component {
@@ -40,7 +41,7 @@ export default class App extends Component {
 
   _loadResourcesAsync = async () => {
     return Promise.all([
-      Asset.loadAsync(images),
+      Asset.loadAsync([background, ...images]),
       Font.loadAsync({
         ...EvilIcons.font
       })

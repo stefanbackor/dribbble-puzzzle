@@ -1,6 +1,17 @@
 {
   "expo": {
+    "name": "Dribbble Puzzzle",
+    "version": "1.0.0",
+    "slug": "dribbble-puzzzle",
+    "privacy": "public",
     "sdkVersion": "25.0.0",
-    "assetBundlePatterns": ["assets/audio/*", "assets/puzzles/*"]
+    "assetBundlePatterns": ["assets/audio/*", "assets/puzzles/images/*"],
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "com.backor.dribbblepuzzzle"
+    },
+    "android": {
+      "package": "com.backor.dribbblepuzzzle"
+    }
   }
 }
