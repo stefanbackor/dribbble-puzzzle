@@ -130,11 +130,24 @@ export default class Puzzle extends React.Component {
   }
 
   containerLayout = {}
+  audioFail = new Audio.Sound()
+  audioSuccess = new Audio.Sound()
+  audioComplete = new Audio.Sound()
 
-  componentDidMount() {
+  async componentDidMount() {
     // const { image, level } = this.navigatorParams(this.props)
     const { image, level } = this.state
     this.randomize({ image, level })
+
+    await this.audioFail.loadAsync(audioFail)
+    await this.audioSuccess.loadAsync(audioSuccess)
+    await this.audioComplete.loadAsync(audioComplete)
+  }
+
+  async componentWillUnmount() {
+    await this.audioFail.unloadAsync()
+    await this.audioSuccess.unloadAsync()
+    await this.audioComplete.unloadAsync()
   }
 
   componentWillReceiveProps(nextProps) {
@@ -157,7 +170,7 @@ export default class Puzzle extends React.Component {
     switch (level) {
       case 5:
         return {
-          dimensions: [[4, 3], [4, 4], [5, 4], [5, 5]],
+          dimensions: [[4, 3], [4, 4]],
           initial: 1,
           radius: 0,
           targetOpacity: { guide: 0, all: 0 }
@@ -253,10 +266,10 @@ export default class Puzzle extends React.Component {
         borderBottomRightRadius: x === cols - 1 && y === rows - 1 ? radius : 0
       },
       active: false,
-      success: false,
-      exposed: exposed.filter(([ex, ey]) => ex === x && ey === y).length
+      success: exposed.filter(([ex, ey]) => ex === x && ey === y).length
         ? true
         : false,
+      exposed: false,
       highlight: false,
       layout: {},
       dropZone: {}
@@ -270,10 +283,13 @@ export default class Puzzle extends React.Component {
 
   playUIAudio = async ({ clip, volume }) => {
     try {
-      const sound = new Audio.Sound()
-      await sound.loadAsync(clip)
-      await sound.setVolumeAsync(volume || 1)
-      await sound.playAsync()
+      await clip.setVolumeAsync(volume || 1)
+      await clip.playAsync()
+      clip.setOnPlaybackStatusUpdate(status => {
+        if (status.didJustFinish) {
+          clip.stopAsync()
+        }
+      })
     } catch (err) {
       // 0fg
     }
@@ -285,7 +301,7 @@ export default class Puzzle extends React.Component {
       highlight: false,
       active: false
     })
-    this.playUIAudio({ clip: audioFail, volume: 0.4 })
+    this.playUIAudio({ clip: this.audioFail, volume: 0.4 })
   }
 
   onSuccessPlacement = index => {
@@ -303,7 +319,7 @@ export default class Puzzle extends React.Component {
           this.onComplete()
         } else {
           this.playUIAudio({
-            clip: audioSuccess,
+            clip: this.audioSuccess,
             volume: 0.4
           })
         }
@@ -313,7 +329,7 @@ export default class Puzzle extends React.Component {
 
   onComplete = () => {
     this.setState({ completed: true }, this.props.setPuzzleSolved)
-    this.playUIAudio({ clip: audioComplete })
+    this.playUIAudio({ clip: this.audioComplete })
   }
 
   onRefresh = () => {
@@ -429,8 +445,8 @@ export default class Puzzle extends React.Component {
         <Column>
           <Container
             radius={radius}
-            width={resultWidth + 2}
-            height={resultHeight + 2}
+            width={resultWidth}
+            height={resultHeight}
             onLayout={({ nativeEvent }) => {
               this.containerLayout = nativeEvent.layout
             }}

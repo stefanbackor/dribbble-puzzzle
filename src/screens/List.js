@@ -1,27 +1,29 @@
 import React from 'react'
 import { connect } from 'react-redux'
-import { Dimensions, Text } from 'react-native'
+import { Dimensions } from 'react-native'
 import styled, { css } from 'styled-components/native'
 import { ScreenOrientation } from 'expo'
 import { EvilIcons } from '@expo/vector-icons'
 import { nextGame, finishGame, setPuzzleActive } from '../actions/game'
 
-const Row = styled.View`
+const Row = styled.ScrollView`
   flex: 1;
   display: flex;
   flex-direction: ${props => (props.landscape ? 'row' : 'column')};
-  justify-content: center;
-  align-items: center;
-  padding-top: 50px;
+  ${'' /* justify-content: center; */} ${'' /* align-items: center; */}
+  width: ${props => props.width};
 `
 
 const Wrap = styled.View`
+  padding-top: 50px;
+  padding-bottom: 50px;
   flex: 1;
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: center;
   ${'' /* align-items: center; */} ${'' /* align-content: center; */};
+  width: ${props => props.width};
 `
 
 const Button = styled.TouchableOpacity`
@@ -65,9 +67,10 @@ export default class List extends React.Component {
     const tileWidth = Math.floor(
       shortestWidth * 0.8 / Math.ceil(Math.sqrt(images.length))
     )
+    const landscape = orientation === ScreenOrientation.Orientation.LANDSCAPE
     return (
-      <Row landscape={orientation === ScreenOrientation.Orientation.LANDSCAPE}>
-        <Wrap>
+      <Row landscape={landscape} width={Dimensions.get('window').width}>
+        <Wrap landscape={landscape} width={Dimensions.get('window').width}>
           {images.map(image => {
             return (
               <Button
@@ -92,8 +95,7 @@ export default class List extends React.Component {
           <Button width={tileWidth} onPress={this.props.nextGame}>
             <EvilIcons
               name="refresh"
-              size={50}
-              borderRadius={50}
+              size={tileWidth / 1.5}
               backgroundColor="transparent"
               color={'silver'}
             />

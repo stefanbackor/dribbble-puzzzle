@@ -1,8 +1,10 @@
 {
   "expo": {
     "name": "Dribbble Puzzzle",
-    "version": "1.0.0",
+    "description": "Simple puzzle game with images from Dribble players.",
+    "version": "1.0.3",
     "slug": "dribbble-puzzzle",
+    "githubUrl": "https://github.com/pista329/dribbble-puzzzle",
     "privacy": "public",
     "sdkVersion": "25.0.0",
     "assetBundlePatterns": ["assets/audio/*", "assets/puzzles/images/*"],
@@ -12,6 +14,8 @@
     },
     "android": {
       "package": "com.backor.dribbblepuzzzle"
-    }
+    },
+    "primaryColor": "#ffffff",
+    "icon": "assets/icon.png",
   }
 }
