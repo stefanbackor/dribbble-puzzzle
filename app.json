@@ -6,7 +6,7 @@
     "slug": "dribbble-puzzzle",
     "githubUrl": "https://github.com/pista329/dribbble-puzzzle",
     "privacy": "public",
-    "sdkVersion": "25.0.0",
+    "sdkVersion": "30.0.0",
     "assetBundlePatterns": ["assets/audio/*", "assets/puzzles/images/*"],
     "platforms": ["ios", "android"],
     "ios": {
