@@ -10,7 +10,6 @@ const Row = styled.ScrollView`
   flex: 1;
   display: flex;
   flex-direction: ${props => (props.landscape ? 'row' : 'column')};
-  ${'' /* justify-content: center; */} ${'' /* align-items: center; */}
   width: ${props => props.width};
 `
 
@@ -22,7 +21,6 @@ const Wrap = styled.View`
   flex-direction: row;
   flex-wrap: wrap;
   justify-content: center;
-  ${'' /* align-items: center; */} ${'' /* align-content: center; */};
   width: ${props => props.width};
 `
 
@@ -101,18 +99,6 @@ export default class List extends React.Component {
             />
           </Button>
         </Wrap>
-        {/* {finished && (
-          <Wrap>
-            <EvilIcons.Button
-              name="refresh"
-              size={50}
-              borderRadius={50}
-              backgroundColor="transparent"
-              color="silver"
-              onPress={this.onRefresh}
-            />
-          </Wrap>
-        )} */}
       </Row>
     )
   }

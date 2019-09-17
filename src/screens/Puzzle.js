@@ -1,7 +1,9 @@
 import React from 'react'
 import { connect } from 'react-redux'
 import { Image, Dimensions, View, TouchableOpacity, Text } from 'react-native'
-import { Asset, Audio, ScreenOrientation } from 'expo'
+import { ScreenOrientation } from 'expo'
+import { Audio } from 'expo-av'
+import { Asset } from 'expo-asset'
 import { sample, sampleSize, shuffle } from 'lodash'
 import styled, { css } from 'styled-components/native'
 import { EvilIcons } from '@expo/vector-icons'
@@ -135,7 +137,6 @@ export default class Puzzle extends React.Component {
   audioComplete = new Audio.Sound()
 
   async componentDidMount() {
-    // const { image, level } = this.navigatorParams(this.props)
     const { image, level } = this.state
     this.randomize({ image, level })
 
@@ -151,20 +152,11 @@ export default class Puzzle extends React.Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    // const { image, level } = this.navigatorParams(nextProps)
     const { image, level } = nextProps
     if (this.state.image !== image) {
       this.setState(this.initialState, () => this.randomize({ image, level }))
     }
   }
-
-  // navigatorParams = props => {
-  //   const {
-  //     screenProps: { tabNavigator: { state: { params: params } } }
-  //   } = props
-  //   const { image, level } = params || {}
-  //   return { image, level }
-  // }
 
   getDifficultyProps = level => {
     switch (level) {
@@ -608,7 +600,9 @@ export default class Puzzle extends React.Component {
               }}
             >
               <Success>
-                {sample(['🤪🎂👍', '🤩👏🎯', '🌈🌈🍾', '🥁🏆🏅', '🚀💎🏁'])}
+                {sample(['🤪', '🎂', '👍', '🤩', '👏', '🎯', '🌈', '🍾', '🥁', '🏆', '🏅', '🚀', '💎', '🏁'])}
+                {sample(['🤪', '🎂', '👍', '🤩', '👏', '🎯', '🌈', '🍾', '🥁', '🏆', '🏅', '🚀', '💎', '🏁'])}
+                {sample(['🤪', '🎂', '👍', '🤩', '👏', '🎯', '🌈', '🍾', '🥁', '🏆', '🏅', '🚀', '💎', '🏁'])}
               </Success>
             </Results>
           )}
