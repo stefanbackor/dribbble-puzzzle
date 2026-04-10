@@ -1,81 +1,62 @@
 import React, { Component } from 'react'
 import { Dimensions } from 'react-native'
-import { StackNavigator, NavigationActions } from 'react-navigation'
+import { NavigationContainer } from '@react-navigation/native'
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { connect } from 'react-redux'
-import { ScreenOrientation } from 'expo'
-import { rootRouteChange } from '../actions/navigation'
-import Loading from '../screens/Loading'
-import Tab from './Tab'
+import List from '../screens/List'
+import Puzzle from '../screens/Puzzle'
+import { Orientation } from '../constants/orientation'
+import { OrientationContext } from '../context/OrientationContext'
+import { rootRouteChange, tabRouteChange } from '../actions/navigation'
 
-const RootNavigator = StackNavigator(
-  {
-    Loading: {
-      screen: Loading
-    },
-    Tab: {
-      screen: Tab
-    }
-  },
-  {
-    mode: 'modal',
-    headerMode: 'none',
-    navigationOptions: {
-      gesturesEnabled: false
-    }
-  }
-)
+const Tab = createBottomTabNavigator()
 
-@connect(null, { rootRouteChange })
+@connect(null, { rootRouteChange, tabRouteChange })
 export default class Root extends Component {
   constructor(props) {
     super(props)
     this.state = {
-      orientation: this.orientation(Dimensions.get('window'))
+      orientation: this.orientation(Dimensions.get('window')),
     }
   }
 
-  componentDidMount() {
-    Dimensions.addEventListener('change', this.handleDimensionsChange)
+  orientation = ({ width, height }) =>
+    width > height ? Orientation.LANDSCAPE : Orientation.PORTRAIT
 
-    this.navigator.dispatch(
-      NavigationActions.reset({
-        index: 0,
-        actions: [NavigationActions.navigate({ routeName: 'Tab' })]
-      })
-    )
+  componentDidMount() {
+    this._dimensionsSub = Dimensions.addEventListener('change', ({ window }) => {
+      this.setState({ orientation: this.orientation(window) })
+    })
   }
 
   componentWillUnmount() {
-    Dimensions.removeEventListener('change', this.handleDimensionsChange)
+    this._dimensionsSub?.remove()
   }
 
-  orientation = ({ width, height }) =>
-    width > height
-      ? ScreenOrientation.Orientation.LANDSCAPE
-      : ScreenOrientation.Orientation.PORTRAIT
-
-  handleDimensionsChange = ({ window }) => {
-    this.setState({ orientation: this.orientation(window) })
-  }
-
-  handleNavigationStateChange = (prevState, currentState) => {
-    const prevRoute = prevState.routes[prevState.index].routeName
-    const nextRoute = currentState.routes[prevState.index].routeName
-    if (prevRoute !== nextRoute) {
-      this.props.rootRouteChange(nextRoute)
+  handleNavigationStateChange = state => {
+    if (!state?.routes) return
+    const name = state.routes[state.index]?.name
+    if (name) {
+      this.props.rootRouteChange('Tab')
+      this.props.tabRouteChange(name)
     }
   }
 
   render() {
     const { orientation } = this.state
     return (
-      <RootNavigator
-        ref={ref => {
-          this.navigator = ref
-        }}
-        screenProps={{ orientation }}
-        onNavigationStateChange={this.handleNavigationStateChange}
-      />
+      <OrientationContext.Provider value={{ orientation }}>
+        <NavigationContainer onStateChange={this.handleNavigationStateChange}>
+          <Tab.Navigator
+            initialRouteName="PuzzleTab"
+            tabBar={() => null}
+            screenOptions={{ headerShown: false }}
+          >
+            <Tab.Screen name="ListTab" component={List} />
+            <Tab.Screen name="PuzzleTab" component={Puzzle} />
+          </Tab.Navigator>
+        </NavigationContainer>
+      </OrientationContext.Provider>
     )
   }
 }

@@ -1,12 +1,13 @@
 import React from 'react'
 import { connect } from 'react-redux'
 import { Image, Dimensions, View, TouchableOpacity, Text } from 'react-native'
-import { ScreenOrientation } from 'expo'
 import { Audio } from 'expo-av'
 import { Asset } from 'expo-asset'
 import { sample, sampleSize, shuffle } from 'lodash'
 import styled, { css } from 'styled-components/native'
 import { EvilIcons } from '@expo/vector-icons'
+import { Orientation } from '../constants/orientation'
+import { OrientationContext } from '../context/OrientationContext'
 import { setPuzzleSolved, goToNextPuzzle } from '../actions/game'
 import Piece from '../components/Piece'
 import background from '../../assets/lightgreypolkadots.jpg'
@@ -101,6 +102,8 @@ const Fullscreen = styled.TouchableOpacity`
   }
 )
 export default class Puzzle extends React.Component {
+  static contextType = OrientationContext
+
   initialState = {
     image: null,
     previousImage: null,
@@ -151,9 +154,9 @@ export default class Puzzle extends React.Component {
     await this.audioComplete.unloadAsync()
   }
 
-  componentWillReceiveProps(nextProps) {
-    const { image, level } = nextProps
-    if (this.state.image !== image) {
+  componentDidUpdate(prevProps) {
+    if (prevProps.image !== this.props.image) {
+      const { image, level } = this.props
       this.setState(this.initialState, () => this.randomize({ image, level }))
     }
   }
@@ -385,7 +388,8 @@ export default class Puzzle extends React.Component {
       radius,
       targetOpacity
     } = this.state
-    const { tabNavigator, orientation } = this.props.screenProps
+    const { orientation } = this.context
+    const { navigation } = this.props
 
     if (!asset) {
       return null
@@ -398,7 +402,7 @@ export default class Puzzle extends React.Component {
     let resultHeight
     let draggableResultWidth
     let draggableResultHeight
-    if (orientation === ScreenOrientation.Orientation.LANDSCAPE) {
+    if (orientation === Orientation.LANDSCAPE) {
       resultWidth = Dimensions.get('window').width / 2
       resultWidth = Math.floor(1 * resultWidth)
       resultHeight = Math.floor(resultWidth / ratio)
@@ -433,7 +437,7 @@ export default class Puzzle extends React.Component {
         </Fullscreen>
       </Row>
     ) : (
-      <Row landscape={orientation === ScreenOrientation.Orientation.LANDSCAPE}>
+      <Row landscape={orientation === Orientation.LANDSCAPE}>
         <Column>
           <Container
             radius={radius}
@@ -619,7 +623,7 @@ export default class Puzzle extends React.Component {
               borderRadius={50}
               backgroundColor="transparent"
               color={'silver'}
-              onPress={() => tabNavigator.navigate('ListTab')}
+              onPress={() => navigation.navigate('ListTab')}
             />
             <EvilIcons.Button
               name="arrow-right"

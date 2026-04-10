@@ -6,18 +6,15 @@ export default class Piece extends Component {
     super(props)
     this.state = {
       active: false,
-      pan: new Animated.ValueXY()
+      pan: new Animated.ValueXY(),
     }
-  }
-
-  componentWillMount() {
-    this.panResponder = this.props.draggable
+    this.panResponder = props.draggable
       ? PanResponder.create({
           onStartShouldSetPanResponder: () => true,
           onPanResponderGrant: this._onPanGrant,
           onPanResponderMove: this._onPanMove,
           onPanResponderRelease: this._onPanRelease,
-          onPanResponderTerminate: this._onPanRelease
+          onPanResponderTerminate: this._onPanRelease,
         })
       : {}
   }
@@ -33,13 +30,16 @@ export default class Piece extends Component {
     } else {
       this.props.onDropZoneLeave()
     }
-    return Animated.event([
-      null,
-      {
-        dx: this.state.pan.x,
-        dy: this.state.pan.y
-      }
-    ])(event, gesture)
+    return Animated.event(
+      [
+        null,
+        {
+          dx: this.state.pan.x,
+          dy: this.state.pan.y,
+        },
+      ],
+      { useNativeDriver: false }
+    )(event, gesture)
   }
 
   _onPanRelease = (_, gesture) => {
@@ -50,7 +50,8 @@ export default class Piece extends Component {
     } else {
       this.props.onDropZoneMiss()
       Animated.spring(this.state.pan, {
-        toValue: { x: 0, y: 0 }
+        toValue: { x: 0, y: 0 },
+        useNativeDriver: false,
       }).start()
     }
   }
@@ -62,14 +63,7 @@ export default class Piece extends Component {
   }
 
   render() {
-    const {
-      image,
-      draggable,
-      tileWidth,
-      tileHeight,
-      style,
-      onLayout
-    } = this.props
+    const { image, draggable, tileWidth, tileHeight, style, onLayout } = this.props
 
     const { active, pan } = this.state
     const { left, top } = pan.getLayout()
@@ -84,12 +78,8 @@ export default class Piece extends Component {
           position: 'absolute',
           zIndex: active ? 1000 : 1,
           ...style,
-          top: draggable
-            ? Animated.add(top, style.top || 0)
-            : style.top || 'auto',
-          left: draggable
-            ? Animated.add(left, style.left || 0)
-            : style.left || 'auto'
+          top: draggable ? Animated.add(top, style.top || 0) : style.top || 'auto',
+          left: draggable ? Animated.add(left, style.left || 0) : style.left || 'auto',
         }}
         {...this.panResponder.panHandlers}
       >

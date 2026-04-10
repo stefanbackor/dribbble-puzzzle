@@ -2,8 +2,9 @@ import React from 'react'
 import { connect } from 'react-redux'
 import { Dimensions } from 'react-native'
 import styled, { css } from 'styled-components/native'
-import { ScreenOrientation } from 'expo'
 import { EvilIcons } from '@expo/vector-icons'
+import { Orientation } from '../constants/orientation'
+import { OrientationContext } from '../context/OrientationContext'
 import { nextGame, finishGame, setPuzzleActive } from '../actions/game'
 
 const Row = styled.ScrollView`
@@ -51,13 +52,11 @@ const Image = styled.Image`
   { nextGame, finishGame, setPuzzleActive }
 )
 export default class List extends React.Component {
+  static contextType = OrientationContext
+
   render() {
-    const {
-      images,
-      solved,
-      finished,
-      screenProps: { tabNavigator, orientation }
-    } = this.props
+    const { images, solved, finished, navigation } = this.props
+    const { orientation } = this.context
     const shortestWidth =
       Dimensions.get('window').width > Dimensions.get('window').height
         ? Dimensions.get('window').width
@@ -65,7 +64,7 @@ export default class List extends React.Component {
     const tileWidth = Math.floor(
       shortestWidth * 0.8 / Math.ceil(Math.sqrt(images.length))
     )
-    const landscape = orientation === ScreenOrientation.Orientation.LANDSCAPE
+    const landscape = orientation === Orientation.LANDSCAPE
     return (
       <Row landscape={landscape} width={Dimensions.get('window').width}>
         <Wrap landscape={landscape} width={Dimensions.get('window').width}>
@@ -77,7 +76,7 @@ export default class List extends React.Component {
                 width={tileWidth}
                 onPress={() => {
                   this.props.setPuzzleActive(image)
-                  tabNavigator.navigate('PuzzleTab')
+                  navigation.navigate('PuzzleTab')
                 }}
               >
                 <Image

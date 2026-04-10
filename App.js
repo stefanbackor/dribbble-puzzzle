@@ -1,6 +1,6 @@
 import React, { Component, Fragment } from 'react'
+import * as SplashScreen from 'expo-splash-screen'
 import { StatusBar } from 'react-native'
-import { AppLoading } from 'expo'
 import { Asset } from 'expo-asset'
 import * as Font from 'expo-font'
 import { EvilIcons } from '@expo/vector-icons'
@@ -11,52 +11,53 @@ import RootNavigator from './src/navigators/Root'
 import background from './assets/lightgreypolkadots.jpg'
 import images from './assets/puzzles'
 
+SplashScreen.preventAutoHideAsync().catch(() => {})
+
 export default class App extends Component {
   state = {
-    isLoadingComplete: false
+    isLoadingComplete: false,
   }
 
   render() {
     if (!this.state.isLoadingComplete && !this.props.skipLoadingScreen) {
-      return (
-        <AppLoading
-          startAsync={this._loadResourcesAsync}
-          onError={this._handleLoadingError}
-          onFinish={this._handleFinishLoading}
-        />
-      )
-    } else {
-      return (
-        <Provider store={store}>
-          <Fragment>
-            <StatusBar
-              translucent
-              barStyle="light-content"
-              backgroundColor="transparent"
-            />
-            <RootNavigator />
-          </Fragment>
-        </Provider>
-      )
+      return null
+    }
+    return (
+      <Provider store={store}>
+        <Fragment>
+          <StatusBar
+            translucent
+            barStyle="light-content"
+            backgroundColor="transparent"
+          />
+          <RootNavigator />
+        </Fragment>
+      </Provider>
+    )
+  }
+
+  async componentDidMount() {
+    if (this.props.skipLoadingScreen) {
+      await SplashScreen.hideAsync().catch(() => {})
+      return
+    }
+    try {
+      await this._loadResourcesAsync()
+      this.setState({ isLoadingComplete: true })
+    } catch (e) {
+      console.warn('App loading error', e)
+      this.setState({ isLoadingComplete: true })
+    } finally {
+      await SplashScreen.hideAsync()
     }
   }
 
   _loadResourcesAsync = async () => {
-    return Promise.all([
+    await Promise.all([
       Asset.loadAsync([background, ...images]),
       Font.loadAsync({
-        ...EvilIcons.font
-      })
+        ...EvilIcons.font,
+      }),
     ])
-  }
-
-  _handleLoadingError = error => {
-    // In this case, you might want to report the error to your error
-    // reporting service, for example Sentry
-    console.warn('App loading error', error)
-  }
-
-  _handleFinishLoading = () => {
-    this.setState({ isLoadingComplete: true })
   }
 }
